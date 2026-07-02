@@ -82,13 +82,13 @@ export default function App() {
               <p className="font-playfair italic font-medium text-xl text-rose-gold m-0 mb-2.5">
                 The Families Of
               </p>
-              <p className="text-[1.05rem] font-semibold tracking-wide text-plum m-0 mb-1.5 leading-relaxed">
+              <p className="text-[1.5rem] font-semibold tracking-wide text-plum m-0 mb-1.5 leading-relaxed">
                 Mr and Mrs Tijani
               </p>
               <p className="font-playfair italic text-gold m-0 mb-0.5 text-base">
                 &amp;
               </p>
-              <p className="text-[1.05rem] font-semibold tracking-wide text-plum m-0 mb-1.5 leading-relaxed">
+              <p className="text-[1.5rem] font-semibold tracking-wide text-plum m-0 mb-1.5 leading-relaxed">
                 Mr and Mrs Oladiran
               </p>
               <p className="text-base text-ink/85 m-0 mt-4">
