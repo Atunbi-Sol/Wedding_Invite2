@@ -43,28 +43,51 @@ const IMAGES = [
   "/img/_SS_8642.jpg",
 ];
 
-const AUTO_PLAY_INTERVAL = 4000; // 4 seconds
+const AUTO_PLAY_INTERVAL = 4500;
 
 export default function PhotoGallery() {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [prevIndex, setPrevIndex] = useState<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   const thumbStripRef = useRef<HTMLDivElement>(null);
   const lightboxThumbStripRef = useRef<HTMLDivElement>(null);
 
-  // Next slide helper
-  const nextSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev + 1) % IMAGES.length);
+  // Set mounted state after initial render
+  useEffect(() => {
+    setIsMounted(true);
   }, []);
 
-  // Previous slide helper
-  const prevSlide = useCallback(() => {
-    setCurrentIndex((prev) => (prev - 1 + IMAGES.length) % IMAGES.length);
+  // Update slide index helper with smooth transition tracking
+  const changeIndex = useCallback((newIndex: number) => {
+    setCurrentIndex((prev) => {
+      setPrevIndex(prev);
+      return newIndex;
+    });
   }, []);
+
+  const nextSlide = useCallback(() => {
+    changeIndex((currentIndex + 1) % IMAGES.length);
+  }, [changeIndex, currentIndex]);
+
+  const prevSlide = useCallback(() => {
+    changeIndex((currentIndex - 1 + IMAGES.length) % IMAGES.length);
+  }, [changeIndex, currentIndex]);
+
+  // Clear previous index after crossfade transition completes
+  useEffect(() => {
+    if (prevIndex !== null) {
+      const timer = setTimeout(() => {
+        setPrevIndex(null);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [prevIndex]);
 
   // Auto-advance timer
   useEffect(() => {
@@ -77,21 +100,14 @@ export default function PhotoGallery() {
     return () => clearInterval(timer);
   }, [isPlaying, isHovered, nextSlide]);
 
-  // Proactively preload surrounding images for buttery-smooth flicker-free transitions
+  // Lightweight preloader for immediate next image only
   useEffect(() => {
-    const indicesToPreload = [
-      (currentIndex + 1) % IMAGES.length,
-      (currentIndex + 2) % IMAGES.length,
-      (currentIndex + 3) % IMAGES.length,
-      (currentIndex - 1 + IMAGES.length) % IMAGES.length,
-    ];
-    indicesToPreload.forEach((idx) => {
-      const img = new Image();
-      img.src = IMAGES[idx];
-    });
+    const nextIdx = (currentIndex + 1) % IMAGES.length;
+    const img = new Image();
+    img.src = IMAGES[nextIdx];
   }, [currentIndex]);
 
-  // Keep thumbnail centered inside its container (without scrolling the main page window)
+  // Keep thumbnail centered inside container without scrolling window
   useEffect(() => {
     const scrollToThumb = (container: HTMLDivElement | null) => {
       if (!container) return;
@@ -164,6 +180,11 @@ export default function PhotoGallery() {
     }
   };
 
+  // Indices to render in main carousel frame (only active and fading-out previous index)
+  const activeFrameIndices = Array.from(
+    new Set([currentIndex, ...(prevIndex !== null ? [prevIndex] : [])])
+  );
+
   return (
     <section className="mb-12 w-full">
       {/* Container Card */}
@@ -189,15 +210,16 @@ export default function PhotoGallery() {
           onTouchEnd={handleTouchEnd}
           onClick={() => setIsLightboxOpen(true)}
         >
-          {/* Main Image with Ken Burns Zoom Out & Cross-Fade */}
-          {IMAGES.map((src, index) => {
+          {/* Virtualized Main Images (Only active and fading previous image rendered in DOM) */}
+          {activeFrameIndices.map((index) => {
             const isActive = index === currentIndex;
+            const src = IMAGES[index];
             return (
               <img
                 key={src}
                 src={src}
                 alt={`Pre-wedding photo ${index + 1}`}
-                loading={index < 5 ? "eager" : "lazy"}
+                decoding="async"
                 style={{
                   animation: isActive
                     ? `kenBurnsZoomOut ${AUTO_PLAY_INTERVAL + 600}ms cubic-bezier(0.25, 1, 0.5, 1) forwards`
@@ -310,9 +332,9 @@ export default function PhotoGallery() {
               <button
                 key={`thumb-${src}`}
                 type="button"
-                onClick={() => setCurrentIndex(idx)}
+                onClick={() => changeIndex(idx)}
                 aria-label={`Go to slide ${idx + 1}`}
-                className={`relative flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden transition-all duration-300 border-2 ${idx === currentIndex
+                className={`relative flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden transition-all duration-300 border-2 cursor-pointer ${idx === currentIndex
                   ? "border-rose-gold scale-105 shadow-md ring-2 ring-gold/40 opacity-100"
                   : "border-transparent opacity-50 hover:opacity-90 hover:scale-100"
                   }`}
@@ -321,6 +343,7 @@ export default function PhotoGallery() {
                   src={src}
                   alt={`Thumbnail ${idx + 1}`}
                   loading="lazy"
+                  decoding="async"
                   className="w-full h-full object-cover"
                 />
               </button>
@@ -331,6 +354,7 @@ export default function PhotoGallery() {
 
       {/* FULL-SCREEN LIGHTBOX MODAL */}
       {isLightboxOpen &&
+        isMounted &&
         createPortal(
           <div
             className="fixed inset-0 z-[99999] flex flex-col justify-between bg-black/92 backdrop-blur-xl animate-fade-in-up cursor-pointer select-none"
@@ -412,15 +436,17 @@ export default function PhotoGallery() {
                 </svg>
               </button>
 
-              {/* Current Image Stack with Cross-Fade */}
+              {/* Virtualized Lightbox Image (Only active & fading previous image rendered) */}
               <div className="relative w-full h-full max-w-full max-h-[78vh] flex items-center justify-center pointer-events-none">
-                {IMAGES.map((src, idx) => {
-                  const isActive = idx === currentIndex;
+                {activeFrameIndices.map((index) => {
+                  const isActive = index === currentIndex;
+                  const src = IMAGES[index];
                   return (
                     <img
                       key={`lb-${src}`}
                       src={src}
-                      alt={`Full screen view ${idx + 1}`}
+                      alt={`Full screen view ${index + 1}`}
+                      decoding="async"
                       style={{
                         willChange: "transform, opacity",
                       }}
@@ -461,13 +487,19 @@ export default function PhotoGallery() {
                   <button
                     key={`lb-thumb-${src}`}
                     type="button"
-                    onClick={() => setCurrentIndex(idx)}
+                    onClick={() => changeIndex(idx)}
                     className={`flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${idx === currentIndex
                       ? "border-gold scale-110 opacity-100 shadow-lg ring-2 ring-rose-gold"
                       : "border-transparent opacity-40 hover:opacity-80"
                       }`}
                   >
-                    <img src={src} alt="" className="w-full h-full object-cover" />
+                    <img
+                      src={src}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover"
+                    />
                   </button>
                 ))}
               </div>
