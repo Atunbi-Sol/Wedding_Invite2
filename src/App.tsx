@@ -13,6 +13,7 @@ import MusicPlayer from "@/components/MusicPlayer";
 import ShareButton from "@/components/ShareButton";
 import AccessCard from "@/components/AccessCard";
 import GiftQRCode from "@/components/GiftQRCode";
+import PhotoGallery from "@/components/PhotoGallery";
 
 export default function App() {
   const [isOpen, setIsOpen] = useState(false);
@@ -119,6 +120,11 @@ export default function App() {
             {/* Countdown */}
             <RevealSection delay={300}>
               <CountdownTimer />
+            </RevealSection>
+
+            {/* Photo Gallery Carousel */}
+            <RevealSection delay={350}>
+              <PhotoGallery />
             </RevealSection>
 
             {/* Details Card */}
