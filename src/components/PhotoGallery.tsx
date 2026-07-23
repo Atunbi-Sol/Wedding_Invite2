@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 
 const IMAGES = [
   "/img/_SS_8172.jpg",
@@ -329,132 +330,151 @@ export default function PhotoGallery() {
       </div>
 
       {/* FULL-SCREEN LIGHTBOX MODAL */}
-      {isLightboxOpen && (
-        <div className="fixed inset-0 z-[9999] flex flex-col justify-between bg-black/90 backdrop-blur-xl animate-fade-in-up">
-          {/* Lightbox Header Controls */}
-          <div className="relative z-10 flex items-center justify-between px-4 py-4 sm:px-8 bg-gradient-to-b from-black/80 to-transparent">
-            {/* Slide Counter */}
-            <div className="flex items-center gap-3">
-              <span className="font-marcellus tracking-widest text-cream text-sm bg-plum/70 px-3.5 py-1.5 rounded-full border border-gold-soft/30">
-                {currentIndex + 1} / {IMAGES.length}
-              </span>
-              <span className="hidden sm:inline font-playfair italic text-cream/70 text-sm">
-                Modupe &amp; Olufunso
-              </span>
+      {isLightboxOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[99999] flex flex-col justify-between bg-black/92 backdrop-blur-xl animate-fade-in-up cursor-pointer select-none"
+            onClick={() => setIsLightboxOpen(false)}
+          >
+            {/* Lightbox Header Controls */}
+            <div
+              className="relative z-10 flex items-center justify-between px-4 py-4 sm:px-8 bg-gradient-to-b from-black/80 to-transparent cursor-default"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Slide Counter */}
+              <div className="flex items-center gap-3">
+                <span className="font-marcellus tracking-widest text-cream text-sm bg-plum/70 px-3.5 py-1.5 rounded-full border border-gold-soft/30">
+                  {currentIndex + 1} / {IMAGES.length}
+                </span>
+                <span className="hidden sm:inline font-playfair italic text-cream/70 text-sm">
+                  Modupe &amp; Olufunso
+                </span>
+              </div>
+
+              {/* Actions: Play/Pause + Close */}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className="p-2.5 rounded-full bg-cream/10 hover:bg-cream/20 text-cream transition-all flex items-center gap-2 text-xs font-marcellus uppercase tracking-wider cursor-pointer"
+                >
+                  {isPlaying ? (
+                    <>
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                      </svg>
+                      <span className="hidden sm:inline">Pause</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                      <span className="hidden sm:inline">Play</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsLightboxOpen(false)}
+                  aria-label="Close modal"
+                  className="w-10 h-10 rounded-full bg-rose-gold/80 hover:bg-rose-gold text-cream flex items-center justify-center backdrop-blur-md transition-transform hover:scale-110 active:scale-95 shadow-lg cursor-pointer"
+                >
+                  <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
-            {/* Actions: Play/Pause + Close */}
-            <div className="flex items-center gap-3">
+            {/* Lightbox Main Image Frame */}
+            <div
+              className="relative flex-1 flex items-center justify-center p-2 sm:p-6 select-none overflow-hidden cursor-pointer"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onClick={() => setIsLightboxOpen(false)}
+            >
+              {/* Previous Button */}
               <button
                 type="button"
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="p-2.5 rounded-full bg-cream/10 hover:bg-cream/20 text-cream transition-all flex items-center gap-2 text-xs font-marcellus uppercase tracking-wider"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  prevSlide();
+                }}
+                aria-label="Previous image"
+                className="absolute left-2 sm:left-6 z-20 w-12 h-12 rounded-full bg-plum/70 hover:bg-plum text-gold-soft border border-gold/30 flex items-center justify-center shadow-2xl transition-all hover:scale-110 active:scale-95 cursor-pointer"
               >
-                {isPlaying ? (
-                  <>
-                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                    </svg>
-                    <span className="hidden sm:inline">Pause</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                    <span className="hidden sm:inline">Play</span>
-                  </>
-                )}
+                <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
+                  <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+                </svg>
               </button>
 
-              {/* Close Button */}
+              {/* Current Image Stack with Cross-Fade */}
+              <div className="relative w-full h-full max-w-full max-h-[78vh] flex items-center justify-center pointer-events-none">
+                {IMAGES.map((src, idx) => {
+                  const isActive = idx === currentIndex;
+                  return (
+                    <img
+                      key={`lb-${src}`}
+                      src={src}
+                      alt={`Full screen view ${idx + 1}`}
+                      style={{
+                        willChange: "transform, opacity",
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className={`absolute max-w-full max-h-[78vh] object-contain rounded-xl shadow-2xl transition-all duration-700 ease-in-out pointer-events-auto cursor-default ${isActive ? "opacity-100 scale-100 z-10" : "opacity-0 scale-95 pointer-events-none z-0"
+                        }`}
+                    />
+                  );
+                })}
+              </div>
+
+              {/* Next Button */}
               <button
                 type="button"
-                onClick={() => setIsLightboxOpen(false)}
-                aria-label="Close modal"
-                className="w-10 h-10 rounded-full bg-rose-gold/80 hover:bg-rose-gold text-cream flex items-center justify-center backdrop-blur-md transition-transform hover:scale-110 active:scale-95 shadow-lg"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  nextSlide();
+                }}
+                aria-label="Next image"
+                className="absolute right-2 sm:right-6 z-20 w-12 h-12 rounded-full bg-plum/70 hover:bg-plum text-gold-soft border border-gold/30 flex items-center justify-center shadow-2xl transition-all hover:scale-110 active:scale-95 cursor-pointer"
               >
-                <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
-                  <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
+                  <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
                 </svg>
               </button>
             </div>
-          </div>
 
-          {/* Lightbox Main Image Frame */}
-          <div
-            className="relative flex-1 flex items-center justify-center p-2 sm:p-6 select-none overflow-hidden"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            {/* Previous Button */}
-            <button
-              type="button"
-              onClick={prevSlide}
-              aria-label="Previous image"
-              className="absolute left-2 sm:left-6 z-20 w-12 h-12 rounded-full bg-plum/70 hover:bg-plum text-gold-soft border border-gold/30 flex items-center justify-center shadow-2xl transition-all hover:scale-110 active:scale-95"
-            >
-              <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
-                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
-              </svg>
-            </button>
-
-            {/* Current Image Stack with Cross-Fade */}
-            <div className="relative w-full h-full max-w-full max-h-[78vh] flex items-center justify-center">
-              {IMAGES.map((src, idx) => {
-                const isActive = idx === currentIndex;
-                return (
-                  <img
-                    key={`lb-${src}`}
-                    src={src}
-                    alt={`Full screen view ${idx + 1}`}
-                    style={{
-                      willChange: "transform, opacity",
-                    }}
-                    className={`absolute max-w-full max-h-[78vh] object-contain rounded-xl shadow-2xl transition-all duration-700 ease-in-out ${isActive ? "opacity-100 scale-100 z-10" : "opacity-0 scale-95 pointer-events-none z-0"
-                      }`}
-                  />
-                );
-              })}
-            </div>
-
-            {/* Next Button */}
-            <button
-              type="button"
-              onClick={nextSlide}
-              aria-label="Next image"
-              className="absolute right-2 sm:right-6 z-20 w-12 h-12 rounded-full bg-plum/70 hover:bg-plum text-gold-soft border border-gold/30 flex items-center justify-center shadow-2xl transition-all hover:scale-110 active:scale-95"
-            >
-              <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
-                <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Lightbox Footer Thumbnail Strip */}
-          <div className="relative z-10 px-4 py-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent">
+            {/* Lightbox Footer Thumbnail Strip */}
             <div
-              ref={lightboxThumbStripRef}
-              className="flex gap-2 overflow-x-auto justify-start sm:justify-center max-w-5xl mx-auto py-1 scrollbar-thin"
+              className="relative z-10 px-4 py-4 bg-gradient-to-t from-black/90 via-black/60 to-transparent cursor-default"
+              onClick={(e) => e.stopPropagation()}
             >
-              {IMAGES.map((src, idx) => (
-                <button
-                  key={`lb-thumb-${src}`}
-                  type="button"
-                  onClick={() => setCurrentIndex(idx)}
-                  className={`flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden border-2 transition-all ${idx === currentIndex
-                    ? "border-gold scale-110 opacity-100 shadow-lg ring-2 ring-rose-gold"
-                    : "border-transparent opacity-40 hover:opacity-80"
-                    }`}
-                >
-                  <img src={src} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
+              <div
+                ref={lightboxThumbStripRef}
+                className="flex gap-2 overflow-x-auto justify-start sm:justify-center max-w-5xl mx-auto py-1 scrollbar-thin"
+              >
+                {IMAGES.map((src, idx) => (
+                  <button
+                    key={`lb-thumb-${src}`}
+                    type="button"
+                    onClick={() => setCurrentIndex(idx)}
+                    className={`flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${idx === currentIndex
+                      ? "border-gold scale-110 opacity-100 shadow-lg ring-2 ring-rose-gold"
+                      : "border-transparent opacity-40 hover:opacity-80"
+                      }`}
+                  >
+                    <img src={src} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </section>
   );
 }
